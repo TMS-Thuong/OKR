@@ -2,7 +2,7 @@
 #
 # analyze-impact.sh - scan.json を突き合わせて影響マップを作る（KR1 step 2）
 #
-# 実処理は同ディレクトリの analyze_code_map.rb にある。
+# 実処理は同ディレクトリの analyze_code_map.py にある。
 # ソースは一切読まず、code-map skill が出した scan.json のみを入力とする。
 #
 # 使い方:
@@ -14,9 +14,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if ! command -v ruby >/dev/null 2>&1; then
-  echo "ruby が見つかりません。Ruby がインストールされた環境で実行してください。" >&2
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "python3 が見つかりません。Python 3 がインストールされた環境で実行してください。" >&2
   exit 1
 fi
 
-exec ruby "${SCRIPT_DIR}/analyze_code_map.rb" "$@"
+exec env PYTHONDONTWRITEBYTECODE=1 python3 "${SCRIPT_DIR}/analyze_code_map.py" "$@"

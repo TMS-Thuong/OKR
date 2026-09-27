@@ -21,7 +21,7 @@ description: >-
 | 1 | `pr-diff` | git history / working tree | `.ai/code-map/raw/pr-diff.json` |
 | 2 | **blast-radius** (this one) | `pr-diff.json` + KR1 `impact.json` | `.ai/code-map/analysis/blast-radius.json` |
 | 3 | `pr-check` | `pr-diff.json` + `blast-radius.json` + source | breakages, duplication, rule violations |
-| 4 | review report | `pr-check.json` | risk-ranked report |
+| 4 | `pr-report` | `pr-check.json` | `.ai/code-map/doc/pr-report.md` — risk-ranked report |
 
 KR1 answers "screen → files". This walks it backwards: "these files changed →
 which screens are at risk". The reversal is a pure lookup over what KR1 already

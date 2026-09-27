@@ -22,6 +22,7 @@ description: >-
 | 1 | `pr-diff` | `.ai/code-map/raw/pr-diff.json` — dòng nào đổi |
 | 2 | `blast-radius` | `.ai/code-map/analysis/blast-radius.json` — đụng bao nhiêu màn hình |
 | 3 | **pr-check** | `.ai/code-map/analysis/pr-check.json` — có sai không |
+| 4 | `pr-report` | `.ai/code-map/doc/pr-report.md` — gộp lại, xếp loại rủi ro |
 
 ## Run
 

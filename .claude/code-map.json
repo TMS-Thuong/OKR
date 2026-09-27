@@ -56,6 +56,28 @@
       "match": "\\A(setting|view_setting|function_preference|onboarding|initialization|tutorial|my_guide|sidebar|diagnostic|server_information|kibana|iptables|firmware|repeater|ui|well_known|application|app|debug|preview|web_view|webhook|matching_rule|approval|freee|google_api|ci_medical|kgzaico|mitepon|ttc|translation|zaicon|alexa|mcp|external|base|charge_failure)"
     }
   ],
+  "namespace_features": {
+    "stocktakings": "Tồn kho",
+    "inventories": "Tồn kho",
+    "inventories_v2": "Tồn kho",
+    "inventories_set_imports": "Tồn kho",
+    "inventories_set_exports": "Tồn kho",
+    "inventory_group_items": "Tồn kho",
+    "org_item_masters": "Tồn kho",
+    "purchase_orders": "Mua hàng",
+    "purchases": "Mua hàng",
+    "sales_orders": "Bán hàng & giao hàng",
+    "packing_slips": "Bán hàng & giao hàng",
+    "inbound_faxes": "Liên lạc & mail",
+    "inbound_mails": "Liên lạc & mail",
+    "messaging": "Liên lạc & mail",
+    "users": "Người dùng & quyền",
+    "org_users": "Người dùng & quyền",
+    "saml": "Người dùng & quyền",
+    "oauth": "Người dùng & quyền",
+    "scheduled_jobs": "Tác vụ nền",
+    "pdf_templates": "Nhập / xuất dữ liệu"
+  },
   "areas_en": {
     "Tồn kho": "Inventory",
     "Mua hàng": "Purchasing",
@@ -110,7 +132,23 @@
       "preview": "Xem trước",
       "v1": "v1",
       "v2": "v2",
-      "inventories_v2": "v2"
+      "inventories_v2": "v2",
+      "inbound_faxes": "Fax nhận",
+      "inbound_mails": "Mail nhận",
+      "messaging": "Nhắn tin",
+      "purchase_orders": "Mua hàng",
+      "sales_orders": "Bán hàng",
+      "packing_slips": "Phiếu giao hàng",
+      "purchases": "Nhập hàng",
+      "stocktakings": "Kiểm kê",
+      "ui": "Giao diện",
+      "inventories": "Tồn kho",
+      "repeater": "Repeater",
+      "pdf_templates": "Mẫu PDF",
+      "excel": "Excel",
+      "scheduled_jobs": "Tác vụ định kỳ",
+      "users": "Người dùng",
+      "org_users": "Người dùng tổ chức"
     },
     "actions": {
       "index": "Danh sách",
@@ -772,7 +810,16 @@
       "web_view": "WebView",
       "withdraw": "rút lui",
       "mcp": "MCP",
-      "stocktakings/inventories": "hàng trong kiểm kê"
+      "stocktakings/inventories": "hàng trong kiểm kê",
+      "ai_assists": "AI hỗ trợ",
+      "bulk_auto_allocate_variants": "tự gán biến thể hàng loạt",
+      "duplicate_checks": "kiểm tra trùng",
+      "faxes": "fax",
+      "inbound_fax_number_requests": "yêu cầu số fax nhận",
+      "inbound_fax_numbers": "số fax nhận",
+      "inbound_faxes": "fax nhận",
+      "number_requests": "yêu cầu cấp số",
+      "withdraw_questionnaires": "khảo sát rời dịch vụ"
     }
   },
   "staging_url": "https://web-staging.zaico.co.jp"

@@ -20,7 +20,7 @@ description: >-
 | 1 | **pr-diff** (this one) | git history / working tree | `.ai/code-map/raw/pr-diff.json` |
 | 2 | `blast-radius` | `pr-diff.json` + KR1 `impact.json` | which screens the change can reach |
 | 3 | `pr-check` | steps 1–2 + source | breakages, duplication, rule violations |
-| 4 | review report | step 3's output | risk-ranked report |
+| 4 | `pr-report` | step 3's output | `.ai/code-map/doc/pr-report.md` — risk-ranked report |
 
 KR1 answers "screen → files". KR2 walks it backwards: "these files changed →
 which screens are at risk". That reversal only works if step 1 records the change

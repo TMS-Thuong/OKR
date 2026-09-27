@@ -24,7 +24,7 @@ terminal, quoting in a review, or diffing between two scans.
 ## What to do
 
 1. Steps 1 and 2 of KR1 run when `--refresh` is passed, and also when
-   `impact.json` is missing. `build.rb` handles both itself, so just forward
+   `impact.json` is missing. `build.py` handles both itself, so just forward
    the flag:
    - `.claude/skills/code-map/scripts/scan-code-map.sh` (incremental from the
      commit recorded in `scan.json`)
@@ -32,7 +32,7 @@ terminal, quoting in a review, or diffing between two scans.
 2. Run the builder, forwarding every flag the user gave:
 
    ```bash
-   .claude/skills/code-map-doc/scripts/build.rb --open [flags]
+   .claude/skills/code-map-doc/scripts/build.py --open [flags]
    ```
 
 3. If the user passed a search term rather than a flag, find the screen: read
@@ -43,10 +43,20 @@ terminal, quoting in a review, or diffing between two scans.
    `1137/1470 = 77%`): the rest are machine-composed names and some read oddly.
    Mention `summary.md` too — it is the half of the output a reader can grep.
 
+## On a project that is not Rails
+
+Step 1 switches to the generic reader by itself. After the first build, **check
+the route count** in the scan summary against what the app obviously has. If it
+is `0` or far too low, the project declares routes in a way no built-in rule
+knows: follow "A project whose routes the generic reader does not find" in
+`.claude/skills/code-map/SKILL.md` — write a rule into `.claude/code-map.json`,
+re-run, and tell the user which rule was added.
+
 ## Always state these limits when reporting
 
-- Routes are parsed from the Rails DSL, not loaded from Rails. Exotic DSL is
-  missed, and `meta.routes_source` records which path was used.
+- Routes are parsed statically, never by running the app. Rails: exotic DSL is
+  missed. Other stacks: only what the rules match, and a prefix held in a
+  constant is lost. `meta.routes_source` records which reader and rules ran.
 - References are name-based static analysis: dynamic dispatch is missed, and
   generic constant names are over-reported.
 - "Related screens" means *shares non-hub files*, not a human's idea of a
@@ -63,11 +73,13 @@ terminal, quoting in a review, or diffing between two scans.
 ## FAQ
 
 **A screen name is wrong.**
-Edit `LABELS` in `.claude/skills/code-map-doc/scripts/build.rb` and re-run
-`/map`. No rebuild.
+Edit `labels` in `.claude/code-map.json` and re-run `/map`. No rebuild.
+A controller filed under the wrong area is `features` / `namespace_features` in
+the same file.
 
 **I want different sections or wording in `summary.md`.**
-Edit `write_summary` in the same file and re-run. No rebuild.
+Edit `write_summary` in `.claude/skills/code-map-doc/scripts/build.py` and re-run.
+No rebuild.
 
 **I want different colours, node sizes or fewer files per screen.**
 Edit the `UI` constant in the same file (`colors`, `sizes`, `force`, `maxFiles`,

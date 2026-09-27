@@ -1,9 +1,13 @@
 ---
 name: code-map
 description: >-
-  Read a Rails codebase and extract raw structural facts (routes, controllers,
-  models, services, jobs, views, Packwerk packs, Vue pages, and the constant
-  references between them) into a single machine-readable JSON file. This is
+  Read a codebase in any language and extract raw structural facts (routes and
+  the handlers behind them, models, services, jobs, and the references between
+  files) into a single machine-readable JSON file. Rails gets a dedicated deep
+  reader (routes DSL, filters, views, Packwerk packs, Vue pages); every other
+  stack — Laravel, Express, NestJS, Spring, Django, FastAPI, Flask, Go, ASP.NET,
+  Ktor, Sinatra, axum, or an in-house framework via a route rule in the config —
+  goes through the generic reader. This is
   step 1 of KR1 "impact map": it only reads and records — it does NOT group
   files into features and does NOT write human-facing documents. Use when asked
   to "scan the codebase", "read routes/controllers/models", "build the code
@@ -37,19 +41,122 @@ must be produced by one reusable step rather than baked into a doc generator.
 
 If a request needs those, produce the scan first, then hand off.
 
+## Two readers, one output
+
+`scan-code-map.sh` picks the reader, and both write the **same `scan.json` schema**,
+so steps 2 and 3 never need to know which one ran.
+
+| Reader | When | How deep |
+|---|---|---|
+| `scan_code_map.py` (**rails**) | `config/routes.rb` and `app/controllers/` exist | Full routes DSL (`resources`, `namespace`, `member`), `before_action`, views and partials, Packwerk packs, Vue page → API calls |
+| `scan_generic.py` (**generic**) | anything else | Routes from declarative rules, files linked by imports and class names |
+
+Force one with `--scanner rails|generic`, or `"scanner": "generic"` in
+`.claude/code-map.json`.
+
+### How the generic reader works
+
+1. **Files.** Every file whose extension is in `LANGS`, skipping vendored,
+   generated and test code (`node_modules`, `vendor`, `dist`, `test/`,
+   `*_test.go`, `*.spec.ts`, …). Narrow it with `scan.include` / `scan.exclude`
+   globs in the config.
+2. **Facts per file.** One tokenizer for every language blanks comments and
+   string bodies without moving any character, then per-language regexes read the
+   namespace, the classes (and what they extend), the functions and the imports.
+3. **Links between files**, from three sources:
+   - imports that resolve to a file: relative paths and `tsconfig` aliases
+     (JS/TS, Ruby, Dart), dotted modules and `from pkg import submodule`
+     (Python), fully-qualified names (Java, Kotlin, Scala, PHP `use`), the
+     module path in `go.mod` (Go), `mod x;` (Rust);
+   - class names used in the code, when exactly one file declares that name — or,
+     when several do, the one nearest the caller if it is clearly nearest
+     (`Features/Articles/List.cs` over `Features/Comments/List.cs`);
+   - injected fields: `private final ArticleService articleService;`,
+     `constructor(private articleService: ArticleService)`, `Type $name` — so a
+     handler that calls `this.articleService.create()` still reaches the service.
+4. **Routes**, from `ROUTE_RULES` in the script plus `routes.rules` in the config.
+   A rule is either a *call* (`Route::get('x', 'A@b')`, `router.get('/x', h)`,
+   `path('x', view)`, `r.GET("/x", h)`) or a *decorator* on the handler
+   (`@GetMapping`, `@Get()`, `[HttpGet]`, `@router.get`), whose class-level
+   annotation supplies the path prefix. Prefixes added in another file are
+   followed too: FastAPI `include_router(prefix=)`, Flask
+   `register_blueprint(url_prefix=)`, Express `app.use('/api', r)`, Gin
+   `r.Group("/api")` passed into a register function.
+5. **No routes at all** (a CLI, a worker, a library with a `main`): each entry
+   point — `if __name__ == "__main__"`, `func main`, `static void main`,
+   `package.json` `main` / `bin` — becomes one screen, so the map still has roots.
+
+Built-in rules, each verified on the RealWorld app of that framework (19 API
+endpoints, same spec everywhere) — every endpoint found, every handler resolved,
+no unresolved controllers:
+
+| Language | Frameworks |
+|---|---|
+| PHP | Laravel (`Route::get/match/resource/apiResource`), Symfony `#[Route]` |
+| JS / TS | Express, Koa-router, Fastify, Hono; NestJS decorators |
+| Java / Kotlin | Spring (`@GetMapping`, `@RequestMapping`), Ktor |
+| C# | ASP.NET Core attributes and minimal APIs |
+| Python | FastAPI, Flask, Starlette; Django `path/re_path/url` with class-based views expanded to their `get/post/list/retrieve…` methods; DRF routers and viewsets |
+| Go | net/http, Gin, Echo, Chi, Fiber, Gorilla |
+| Ruby | Sinatra (Rails has its own reader) |
+| Rust | axum `.route()`, actix `#[get]` |
+
+Languages read for links: Ruby, Python, JavaScript/TypeScript (+ Vue, Svelte),
+PHP, Java, Kotlin, C#, Go, Rust, Swift, Dart, Scala. Another language is one
+row in `LANGS`.
+
+### A project whose routes the generic reader does not find
+
+This is expected for an in-house framework or an unusual style. **Do not
+give up and do not edit the script** — write a rule into the project's
+`.claude/code-map.json`:
+
+1. Run the scan and read the summary line: `routes=0` or a count far below what
+   the app obviously has means the rules did not match.
+2. Find how the project declares one route: `grep -rn` for a URL you know
+   (`"/orders"`) and read the lines around it.
+3. Write a rule. Named groups: `method`, `path`, and either `handler` (a name
+   such as `ordersHandler.list`) or `controller` + `action`. Leave out
+   `handler` and the last argument of the call is taken as the handler.
+
+   ```json
+   {
+     "routes": {
+       "rules": [
+         { "name": "mount", "lang": "javascript", "kind": "call",
+           "pattern": "\\bmount\\(\\s*\"(?P<method>[A-Z]+)\\s+(?P<path>/[^\"]*)\"\\s*,\\s*(?P<handler>[\\w.]+)" }
+       ]
+     }
+   }
+   ```
+
+   Rule keys: `name`, `lang` (one or a list, from `LANGS`), `kind`
+   (`call` | `decorator`), `pattern` (Python `re`, matched against the code
+   with comments removed and strings kept), optional `files` (regex on the
+   path), `prefix` (decorator on the class that gives the path prefix),
+   `file_prefix`, `methods_in`, `inline` (the handler is the `{ … }` block
+   right after the match). `routes.disable: ["express"]` turns a built-in rule
+   off when it matches something that is not a route.
+4. Re-run and compare the route count and a few `controller#action` names
+   against the code. Report the rule you added.
+
 ## Running it
 
 ```bash
 .claude/skills/code-map/scripts/scan-code-map.sh --root .
 ```
 
-`scan-code-map.sh` is a thin entrypoint over `scan_code_map.rb`, the same shape
-`affected-tests.sh` uses over `script/affected_tests/*.rb`. The real work is in
-Ruby because it parses the Rails routing DSL with a nesting stack and emits and
-merges a nested 2 MB JSON document — bash driving `jq` per file would be slower
-and far harder to read. Ruby is already a hard dependency of this repo and the
-script uses stdlib only, so it runs on the host with **no bundler, no docker,
-and without booting Rails**.
+`scan-code-map.sh` is a thin entrypoint over `scan_code_map.py`. The real work
+is in Python because it parses the Rails routing DSL with a nesting stack and
+emits and merges a nested 4 MB JSON document — bash driving `jq` per file would
+be slower and far harder to read. It uses the standard library only and runs on
+Python 3.8+, so it needs **no pip, no bundler, no docker, and does not boot
+Rails**. The KR2 skills already need `python3`, so KR1 adds no new dependency.
+
+It reads Ruby source with regexes, and Ruby's regex rules differ from Python's in
+one way that matters here: Ruby's `\w` is ASCII-only but its `\b` treats Japanese
+as word characters. `R()` / `_rubyish()` in the script reproduce that, so a class
+name glued to a Japanese comment is read the same way Rails developers expect.
 
 Options:
 
@@ -93,7 +200,7 @@ So:
 
 # routine refresh after pulling / after a branch of work
 .claude/skills/code-map/scripts/scan-code-map.sh --root . \
-  --since "$(ruby -rjson -e "puts JSON.parse(File.read('.ai/code-map/raw/scan.json'))['meta']['commit']")"
+  --since "$(python3 -c "import json; print(json.load(open('.ai/code-map/raw/scan.json'))['meta']['commit'])")"
 ```
 
 The previous commit is recorded in `meta.commit`, so an incremental refresh
@@ -145,6 +252,19 @@ are the join keys that let step 2 walk
 Vue page by convention rather than by guesswork.
 
 ## Known limitations — state these when reporting results
+
+**Generic reader** (everything that is not Rails):
+
+- Links are name-based: two classes with the same name far apart are dropped
+  rather than guessed, and calls made through reflection, string names or a
+  DI container configured in XML/YAML are invisible.
+- A route whose path is built at runtime (`"/" + name`) or whose prefix comes
+  from a constant (`prefix=API_PREFIX`) keeps only the literal part.
+- No views, templates or frontend-to-API links — those are Rails-reader only.
+- `--since` is accepted but the generic reader always scans in full (about
+  4 seconds per 1,000 files; zaico's 5,900 files take 24 s).
+
+**Rails reader:**
 
 - **Routes are statically parsed**, not loaded from Rails. `resources` blocks
   are expanded; `namespace` / `scope` / `draw` are followed, including their

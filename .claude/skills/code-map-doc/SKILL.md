@@ -30,14 +30,14 @@ moment this skill starts computing, the page stops being reproducible.
 ## Running it
 
 ```bash
-.claude/skills/code-map-doc/scripts/build.rb --open              # ~1 s
-.claude/skills/code-map-doc/scripts/build.rb --refresh --open    # ~10 s, re-reads the code
+.claude/skills/code-map-doc/scripts/build.py --open              # ~1 s
+.claude/skills/code-map-doc/scripts/build.py --refresh --open    # ~6 s, re-reads the code
 ```
 
 Or `/map` — see `.claude/commands/map.md`.
 
-Ruby stdlib only. **No npm, no toolchain, no installed app.** The host runs
-Ruby 2.6, so the script stays on 2.6-compatible syntax.
+Python standard library only. **No npm, no pip, no toolchain, no installed app.**
+The script stays on Python 3.8-compatible syntax.
 
 | Flag | Meaning |
 |---|---|
@@ -52,12 +52,12 @@ Ruby 2.6, so the script stays on 2.6-compatible syntax.
 
 ```
 SKILL.md
-scripts/build.rb      names the screens, builds the payload, injects it
+scripts/build.py      names the screens, builds the payload, injects it
 assets/app.html       pre-built bundle, 399 KB, not hand-edited
 ```
 
 `assets/app.html` is a React + `react-force-graph-2d` bundle with a
-`/*__DATA__*/` placeholder. `build.rb` substitutes the dataset into it, which is
+`/*__DATA__*/` placeholder. `build.py` substitutes the dataset into it, which is
 why nobody needs a toolchain to get a page. The canvas, the zoom and the pan are the
 library's job; roughly 380 lines of glue are ours. There is one layout, a
 **tree**: every view is a star around one centre, so the arms are grouped under
@@ -74,13 +74,13 @@ affected*. Edit `STRINGS[...]['roles']` to change them.
 Two tabs: the tree and the module list. Step 2's findings (unresolved
 controllers, hubs, unreached files) are in `summary.md`, not in the page.
 
-**Everything worth tuning lives in `build.rb`, not in the bundle:**
+**Everything worth tuning lives in `.claude/code-map.json` or `build.py`, not in the bundle:**
 
 | Change | Where | Rebuild needed |
 |---|---|---|
 | Data after a code change | `--refresh` | no |
-| A wrong Vietnamese name | `LABELS` in `build.rb` | no |
-| Colours, node sizes, tree spacing (`UI['tree']`), branch names (`roles`), files drawn per screen | `UI` / `STRINGS` in `build.rb` | no |
+| A wrong Vietnamese name, a controller in the wrong feature area | `labels` / `features` / `namespace_features` in `.claude/code-map.json` | no |
+| Colours, node sizes, tree spacing (`UI['tree']`), branch names (`roles`), files drawn per screen | `UI` / `STRINGS` in `build.py` | no |
 | Panels, tabs, interaction | `.ai/code-map/ui/src/App.tsx` | **yes** |
 
 Rebuilding the bundle (only for that last row):
@@ -95,8 +95,8 @@ part of the skill, and `.ai/` is git-ignored.
 
 ## Reusing this on another project
 
-The scripts know Rails, not zaico. Everything repo-specific is in one file,
-`.claude/code-map.json`:
+The scripts know Rails and a generic reader for other stacks, not zaico.
+Everything repo-specific is in one file, `.claude/code-map.json`:
 
 | Key | What it does |
 |---|---|
@@ -105,21 +105,27 @@ The scripts know Rails, not zaico. Everything repo-specific is in one file,
 | `areas_en` | English name per area — the only labels with no original in the code |
 | `hidden_controllers` | regexes for controllers kept off the overview (zaico: `\Aapi/`, `zaico_admin`) |
 | `default_screen` | screen selected on load |
+| `scanner` | `rails` or `generic`; normally auto-detected |
+| `routes.rules` / `routes.disable` | extra route rules for the generic reader, or built-in ones turned off |
+| `scan.include` / `scan.exclude` | globs narrowing which files the generic reader reads |
 
-To use these skills in another Rails repo: copy `.claude/skills/code-map`,
+To use these skills in another repo: copy `.claude/skills/code-map`,
 `impact-analysis` and `code-map-doc`, then write that JSON. **Every key is
 optional.** With no config file the map still builds — screens keep their
 `controller#action` names and every controller lands in one area. Adding
 dictionary entries raises the named share; nothing else has to change, and no
 script is edited.
 
-Non-Rails projects are out of scope: step 1 parses the Rails routing DSL, and
-screens are defined as `controller#action`.
+Non-Rails projects go through the generic reader in step 1 (see
+`.claude/skills/code-map/SKILL.md`). A screen is still `controller#action`:
+the handler's class or file, then the handler function —
+`articles#createArticle` for Spring, `users#UsersLogin` for Gin. Steps 2 and 3
+are the same code for every stack.
 
 ## Names
 
 `controller#action` is precise and unreadable, so screens are named from the
-`LABELS` table at the top of `build.rb`. The rule is visible on purpose:
+`labels` tables in `.claude/code-map.json`. The rule is visible on purpose:
 **{verb} {noun}**, with `overrides` winning outright for names everyone already
 says (`users/sessions#new` → `Đăng nhập`).
 
